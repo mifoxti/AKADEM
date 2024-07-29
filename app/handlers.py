@@ -42,6 +42,16 @@ class AdminStatusEdit(StatesGroup):
     del_user_id = State()
 
 
+class PosterViewer(StatesGroup):
+    poster_id = State()
+    return_to_show = State()
+
+
+class BroadcastGen(StatesGroup):
+    photo_await = State()
+    message_await = State()
+
+
 # Загрузка токена из файла config.json
 with open('data/config.json', 'r') as config_file:
     config = json.load(config_file)
@@ -126,11 +136,43 @@ async def callback_ticket_shower(callback_query: CallbackQuery):
 
 ### АФИША СОБЫТИЙ (РАЗРАБОТКА)
 @router.callback_query(F.data == "events")
-async def callback_tickets(callback_query: CallbackQuery):
+async def callback_events_poster(callback_query: CallbackQuery, state: FSMContext):
+    await state.set_state(PosterViewer.poster_id)
+    current_data = await state.get_data()
     events = dbh.get_events()
-    for i in range(len(events)):
-        print(events[i])
-    await callback_query.message.edit_text("События", reply_markup=kb.events)
+    max_id = len(events)
+    current_id = 0
+    if len(events) != 0:
+        if not current_data:
+            await state.update_data(current_id=0)
+        else:
+            current_id = current_data["current_id"]
+        mes = (f"<b><u>{events[current_id][1]}</u></b>\n"
+               f"<u>{events[current_id][2]}</u>\n\n"
+               f"{events[current_id][5]}")
+    else:
+        mes = "Событий пока нет, хнык-хнык :("
+    print(max_id - current_id)
+    event_keyboard = kb.generate_control_panel(1 if 0 - current_id < 0 else 0, 1 if max_id - current_id > 1 else 0)
+    await callback_query.message.edit_text(mes, parse_mode="HTML", reply_markup=event_keyboard)
+
+
+@router.callback_query(F.data == "ev_next")
+async def callback_next_event(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    current_id = data["current_id"] + 1
+    await state.update_data(current_id=current_id)
+    print(data)
+    await callback_events_poster(callback_query, state)
+
+
+@router.callback_query(F.data == "ev_prev")
+async def callback_next_event(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    current_id = data["current_id"] - 1
+    await state.update_data(current_id=current_id)
+    print(data)
+    await callback_events_poster(callback_query, state)
 
 
 ### СОЗДАНИЕ ИВЕНТА (ДОДЕЛАТЬ)
@@ -188,6 +230,19 @@ async def callback_tickets(callback_query: CallbackQuery, state: FSMContext):
                                                parse_mode='MarkdownV2', reply_markup=kb.admin_main)
     except Exception as e:
         print(e)
+
+
+# РАССЫЛКА
+@router.callback_query(F.data == "gen_broadcast")
+async def callback_gen_broadcast_photo(callback_query: CallbackQuery, state: FSMContext):
+    await state.set_state(BroadcastGen.photo_await)
+    await callback_query.message.edit_text("Можешь прислать картинку. Если ее не будет - пришли 0.\\!",
+                                           parse_mode='MarkdownV2', reply_markup=kb.back_to_op_main)
+
+
+@router.callback_query(BroadcastGen.photo_await)
+async def callback_gen_broadcast_message(callback_query: CallbackQuery, state: FSMContext):
+    pass
 
 
 # ВЫДАЧА БИЛЕТОВ

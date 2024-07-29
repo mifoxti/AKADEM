@@ -80,18 +80,34 @@ back_from_photo = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_from_photo")],
 ])
 
+
 def generate_event_buttons():
     partys = dbh.get_events()
     party_keyboard = InlineKeyboardBuilder()
     for party in partys:
         party_keyboard.add(InlineKeyboardButton(text=party[1], callback_data=f"ev_{party[0]}"))
     party_keyboard.add(InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_op_main"))
-    return party_keyboard.as_markup()
+    return party_keyboard.adjust(1).as_markup()
 
 
 def generate_tickets_buttons(tickets):
     tickets_keyboard = InlineKeyboardBuilder()
     for ticket in tickets:
-        tickets_keyboard.add(InlineKeyboardButton(text=smiles[str(ticket[1])] + ticket[2], callback_data=f"ti_{ticket[0]}"))
+        tickets_keyboard.add(
+            InlineKeyboardButton(text=smiles[str(ticket[1])] + ticket[2], callback_data=f"ti_{ticket[0]}"))
     tickets_keyboard.add(InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main"))
     return tickets_keyboard.adjust(1).as_markup()
+
+
+def generate_control_panel(prev, next):
+    control = InlineKeyboardBuilder()
+    # text="⬅️", callback_data="ev_back"
+    # text="➡️", callback_data="ev_next"
+    if prev:
+        control.add(
+            InlineKeyboardButton(text="⬅️", callback_data="ev_prev"))
+    if next:
+        control.add(
+            InlineKeyboardButton(text="➡️", callback_data="ev_next"))
+    control.add(InlineKeyboardButton(text="Назад", callback_data="back_to_main"))
+    return control.adjust(prev + next if prev + next != 0 else 1).as_markup()
