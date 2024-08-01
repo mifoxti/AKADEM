@@ -52,7 +52,7 @@ admin_main = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="🎫 Создать билет", callback_data="gen_ticket")],
     [InlineKeyboardButton(text="🎉 Создать событие", callback_data="gen_event"),
      InlineKeyboardButton(text="📢 Рассылка", callback_data="gen_broadcast")],
-    [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main"),
+    [InlineKeyboardButton(text="⬅️ Назад", callback_data="from_op_to_main"),
      InlineKeyboardButton(text="⚙️ Расширенные комманды", callback_data="more_com")]
 ])
 

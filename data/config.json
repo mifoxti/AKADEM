@@ -12,5 +12,22 @@
   "image_types": {
     "0": "Standard.png",
     "1": "Vip.png"
+  },
+  "events_images": {
+    "1": {
+      "poster": "event_1",
+      "standard": "0",
+      "vip": "1"
+    },
+    "2": {
+      "poster": "event_2",
+      "standard": "None",
+      "vip": "None"
+    },
+    "3": {
+      "poster": "event_3",
+      "standard": "None",
+      "vip": "None"
+    }
   }
 }

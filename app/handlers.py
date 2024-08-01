@@ -2,7 +2,7 @@ import json
 import os
 from aiogram import F, Router, Bot
 from aiogram.filters import CommandStart
-from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.types import Message, CallbackQuery, FSInputFile, InputMediaPhoto
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 import database_helper as dbh
@@ -63,10 +63,12 @@ bot = Bot(token=config['telegram']['api_token'])
 async def cmd_start(message: Message, state: FSMContext):
     user_id = message.from_user.id
     if dbh.find_user(user_id):
-        photo = FSInputFile("image/109596.png")
-        await message.answer(
-            f"Привет.\nТвой ID: {message.from_user.id},\nИмя: {message.from_user.first_name}",
-            reply_markup=kb.main)
+        photo = FSInputFile("image/None.jpg")
+        await message.answer_photo(photo,
+                                   f"Привет."
+                                   f"\nТвой ID: {message.from_user.id},"
+                                   f"\nИмя: {message.from_user.first_name}",
+                                   reply_markup=kb.main)
     else:
         await state.set_state(Reg.name)
         await message.answer("Нет проблем? Бери AKADEM!\n"
@@ -99,8 +101,11 @@ async def input_nickname(message: Message, state: FSMContext):
     data = await state.get_data()
     dbh.register_user(message.from_user.id, data["name"], data["surname"],
                       data["nick"])
-    await message.answer(f"Добро пожаловать в AKADEM!!!\n"
-                         f"Это главное меню!\n", reply_markup=kb.main)
+    photo = FSInputFile("image/None.jpg")
+    await state.clear()
+    await message.answer_photo(photo,
+                               f"Добро пожаловать в AKADEM!!!\n"
+                               f"Это главное меню!\n", reply_markup=kb.main)
 
 
 ### СПИСОК БИЛЕТОВ (РАЗРАБОТКА)
@@ -115,22 +120,28 @@ async def callback_tickets(callback_query: CallbackQuery):
         list_tickets.append(dbh.find_ticket_by_id(list_tpu[i][0]))
     for i in range(len(list_tickets)):
         list_btns.append([list_tickets[i][0], list_tickets[i][1], list_events[i][1]])
-    print(list_btns)
     tickets_keyboard = kb.generate_tickets_buttons(list_btns)
     if list_btns:
         mes = "Вот твои билеты:"
     else:
         mes = "Билетов пока нет, хнык-хнык :((\n\nПриобрести билеты можно у администратора @f4awh1le"
-    await callback_query.message.edit_text(mes, reply_markup=tickets_keyboard)
+    photo = FSInputFile("image/None.jpg")
+    await bot.edit_message_media(chat_id=callback_query.message.chat.id,
+                                 message_id=callback_query.message.message_id,
+                                 media=InputMediaPhoto(media=photo, caption=mes),
+                                 reply_markup=tickets_keyboard)
 
 
 @router.callback_query(F.data.startswith("ti_"))
 async def callback_ticket_shower(callback_query: CallbackQuery):
     ticket_info = dbh.find_ticket_by_id(callback_query.data.lstrip("ti_"))
     user_info = dbh.find_user(callback_query.from_user.id)
-    ticket = gen_image(ticket_info[1], user_info[1], user_info[2], user_info[3], user_info[0])
+    gen_image(ticket_info[1], user_info[1], user_info[2], user_info[3], user_info[0])
     photo = FSInputFile(f'image/ticket{user_info[0]}.jpg')
-    await callback_query.message.answer_photo(photo, "Билетик", reply_markup=kb.back_from_photo)
+    await bot.edit_message_media(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
+                                 media=InputMediaPhoto(media=photo, caption="Билетик"),
+                                 reply_markup=kb.back_from_photo)
+    # await callback_query.message.edit_(photo) # ( photo, "Билетик", reply_markup=kb.back_from_photo)
     os.remove(f'image/ticket{user_info[0]}.jpg')
 
 
@@ -152,9 +163,12 @@ async def callback_events_poster(callback_query: CallbackQuery, state: FSMContex
                f"{events[current_id][5]}")
     else:
         mes = "Событий пока нет, хнык-хнык :("
-    print(max_id - current_id)
     event_keyboard = kb.generate_control_panel(1 if 0 - current_id < 0 else 0, 1 if max_id - current_id > 1 else 0)
-    await callback_query.message.edit_text(mes, parse_mode="HTML", reply_markup=event_keyboard)
+    photo = FSInputFile(f"image/event_{events[current_id][0]}.jpg")
+    await bot.edit_message_media(chat_id=callback_query.message.chat.id,
+                                 message_id=callback_query.message.message_id,
+                                 media=InputMediaPhoto(media=photo, caption=mes, parse_mode="HTML"),
+                                 reply_markup=event_keyboard)
 
 
 @router.callback_query(F.data == "ev_next")
@@ -336,7 +350,11 @@ async def echo_handler(message: Message, state: FSMContext) -> None:
 ### НАСТРОЙКИ (РАЗРАБОТКА)
 @router.callback_query(F.data == "settings")
 async def callback_settings(callback_query: CallbackQuery):
-    await callback_query.message.edit_text("Настройки:", reply_markup=kb.settings)
+    photo = FSInputFile("image/None.jpg")
+    await bot.edit_message_media(chat_id=callback_query.message.chat.id,
+                                 message_id=callback_query.message.message_id,
+                                 media=InputMediaPhoto(media=photo, caption="Настройки:", parse_mode='MarkdownV2'),
+                                 reply_markup=kb.settings)
 
 
 # НАЗНАЧЕНИЕ АДМИНИСТРАТОРА
@@ -414,7 +432,12 @@ async def callback_del_send_admin(callback_query: CallbackQuery, state: FSMConte
 @router.callback_query(F.data == "back_to_main")
 async def callback_back_to_main(callback_query: CallbackQuery, state: FSMContext):
     await state.clear()
-    await callback_query.message.edit_text("Главное меню:", reply_markup=kb.main)
+    photo = FSInputFile("image/None.jpg")
+    await bot.edit_message_media(chat_id=callback_query.message.chat.id,
+                                 message_id=callback_query.message.message_id,
+                                 media=InputMediaPhoto(media=photo, caption="Главное меню:",
+                                                       parse_mode='MarkdownV2'),
+                                 reply_markup=kb.main)
 
 
 @router.callback_query(F.data == "back_to_op_main")
@@ -423,11 +446,25 @@ async def callback_back_to_main(callback_query: CallbackQuery, state: FSMContext
     await callback_query.message.edit_text("Админ, ебать Беляева в рот, меню:", reply_markup=kb.admin_main)
 
 
-@router.callback_query(F.data == "back_from_photo")
+@router.callback_query(F.data == "from_op_to_main")
 async def callback_back_to_main(callback_query: CallbackQuery, state: FSMContext):
     await callback_query.message.delete()
     await state.clear()
-    # await callback_query.message.edit_text("Админ, ебать Беляева в рот, меню:", reply_markup=kb.admin_main)
+    photo = FSInputFile("image/None.jpg")
+    await callback_query.message.answer_photo(photo,
+                                              f"Добро пожаловать в AKADEM!!!\n"
+                                              f"Это главное меню!\n", reply_markup=kb.main)
+
+
+@router.callback_query(F.data == "back_from_photo")
+async def callback_back_to_main(callback_query: CallbackQuery, state: FSMContext):
+    await state.clear()
+    photo = FSInputFile("image/None.jpg")
+    await bot.edit_message_media(chat_id=callback_query.message.chat.id,
+                                 message_id=callback_query.message.message_id,
+                                 media=InputMediaPhoto(media=photo, caption="Админ, ебать Беляева в рот, меню:",
+                                                       parse_mode='MarkdownV2'),
+                                 reply_markup=kb.main)
 
 
 # ПРОФИЛЬ
@@ -437,7 +474,11 @@ async def callback_profile(callback_query: CallbackQuery):
     formatted_text = (f'Твой профиль👤\n\\(его нужно переслать администратору '
                       f'для покупки билетов или с любым другим вопросом\\)\\!\n\n') + profile_message_generator(
         data)
-    await callback_query.message.edit_text(formatted_text, parse_mode='MarkdownV2', reply_markup=kb.profile)
+    photo = FSInputFile("image/None.jpg")
+    await bot.edit_message_media(chat_id=callback_query.message.chat.id,
+                                 message_id=callback_query.message.message_id,
+                                 media=InputMediaPhoto(media=photo, caption=formatted_text, parse_mode='MarkdownV2'),
+                                 reply_markup=kb.profile)
 
 
 def profile_message_generator(data):
