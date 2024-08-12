@@ -1,12 +1,14 @@
 import json
 import os
+
 from aiogram import F, Router, Bot
 from aiogram.filters import CommandStart
-from aiogram.types import Message, CallbackQuery, FSInputFile, InputMediaPhoto
-from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
-import database_helper as dbh
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.types import Message, CallbackQuery, FSInputFile, InputMediaPhoto
+
 import app.keyboards as kb
+import database_helper as dbh
 from ticket_generator import gen_image
 
 router = Router()
@@ -50,6 +52,12 @@ class PosterViewer(StatesGroup):
 class BroadcastGen(StatesGroup):
     photo_await = State()
     message_await = State()
+    release = State()
+
+
+class DeleteEvent(StatesGroup):
+    event_id = State()
+    sure_delete = State()
 
 
 # Загрузка токена из файла config.json
@@ -72,7 +80,7 @@ async def cmd_start(message: Message, state: FSMContext):
     else:
         await state.set_state(Reg.name)
         await message.answer("Нет проблем? Бери AKADEM!\n"
-                             "Тебя еще нет в нашей базе данных, которую мы обязательно продадим при первой возможности, поэтому, скорее регестрируйся!\n"
+                             "Тебя еще нет в нашей базе данных, которую мы обязательно продадим при первой возможности, поэтому, скорее регестрируйся!\n\nШУТКА\n\n"
                              "\nНапиши мне свое имя!")
 
 
@@ -81,8 +89,7 @@ async def cmd_start(message: Message, state: FSMContext):
 async def input_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(Reg.surn)
-    await message.answer(f"Супер, у Максима Беляева бы это не получилось\n"
-                         "(он бы ввел Madara202HoudildoSuperMaxLife2)...\n"
+    await message.answer(f"Супер, у тебя получилось!\n"
                          f"\nТеперь напиши свою фамилию!")
 
 
@@ -124,7 +131,7 @@ async def callback_tickets(callback_query: CallbackQuery):
     if list_btns:
         mes = "Вот твои билеты:"
     else:
-        mes = "Билетов пока нет, хнык-хнык :((\n\nПриобрести билеты можно у администратора @f4awh1le"
+        mes = "Билетов пока нет, хнык-хнык :((\n\nПриобрести билеты можно у администратора @gustova_04"
     photo = FSInputFile("image/None.jpg")
     await bot.edit_message_media(chat_id=callback_query.message.chat.id,
                                  message_id=callback_query.message.message_id,
@@ -141,7 +148,6 @@ async def callback_ticket_shower(callback_query: CallbackQuery):
     await bot.edit_message_media(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,
                                  media=InputMediaPhoto(media=photo, caption="Билетик"),
                                  reply_markup=kb.back_from_photo)
-    # await callback_query.message.edit_(photo) # ( photo, "Билетик", reply_markup=kb.back_from_photo)
     os.remove(f'image/ticket{user_info[0]}.jpg')
 
 
@@ -161,14 +167,20 @@ async def callback_events_poster(callback_query: CallbackQuery, state: FSMContex
         mes = (f"<b><u>{events[current_id][1]}</u></b>\n"
                f"<u>{events[current_id][2]}</u>\n\n"
                f"{events[current_id][5]}")
+        event_keyboard = kb.generate_control_panel(1 if 0 - current_id < 0 else 0, 1 if max_id - current_id > 1 else 0)
+        photo = FSInputFile(f"image/{events[current_id][4]}")
+        await bot.edit_message_media(chat_id=callback_query.message.chat.id,
+                                     message_id=callback_query.message.message_id,
+                                     media=InputMediaPhoto(media=photo, caption=mes, parse_mode="HTML"),
+                                     reply_markup=event_keyboard)
+
     else:
         mes = "Событий пока нет, хнык-хнык :("
-    event_keyboard = kb.generate_control_panel(1 if 0 - current_id < 0 else 0, 1 if max_id - current_id > 1 else 0)
-    photo = FSInputFile(f"image/event_{events[current_id][0]}.jpg")
-    await bot.edit_message_media(chat_id=callback_query.message.chat.id,
-                                 message_id=callback_query.message.message_id,
-                                 media=InputMediaPhoto(media=photo, caption=mes, parse_mode="HTML"),
-                                 reply_markup=event_keyboard)
+        photo = FSInputFile("image/None.jpg")
+        await bot.edit_message_media(chat_id=callback_query.message.chat.id,
+                                     message_id=callback_query.message.message_id,
+                                     media=InputMediaPhoto(media=photo, caption=mes, parse_mode="HTML"),
+                                     reply_markup=kb.back_to_main)
 
 
 @router.callback_query(F.data == "ev_next")
@@ -189,7 +201,37 @@ async def callback_next_event(callback_query: CallbackQuery, state: FSMContext):
     await callback_events_poster(callback_query, state)
 
 
-### СОЗДАНИЕ ИВЕНТА (ДОДЕЛАТЬ)
+### УДАЛЕНИЕ ИВЕНТА
+@router.callback_query(F.data == "more_com")
+async def callback_more_admin_commands(callback_query: CallbackQuery, state: FSMContext):
+    await callback_query.message.edit_text("Расширенные комманды\n",
+                                           parse_mode='MarkdownV2', reply_markup=kb.more_op_comm)
+
+
+@router.callback_query(F.data == "del_event")
+async def callback_del_event(callback_query: CallbackQuery, state: FSMContext):
+    await callback_query.message.edit_text("Выбери ивент, который хочешь удалить:\n",
+                                           parse_mode='MarkdownV2', reply_markup=kb.generate_event_buttons(priq='dev'))
+
+
+@router.callback_query(F.data.startswith("dev_"))
+async def callback_dev_event(callback_query: CallbackQuery, state: FSMContext):
+    event_id = int(callback_query.data.lstrip("dev_"))
+    await state.set_state(DeleteEvent.sure_delete)
+    await state.update_data(event_id=event_id)
+    await callback_query.message.edit_text(
+        "Вы уверены, что хотите удалить ивент и все связанные с ним билеты?\n"
+        "Откатить изменение будет очень трудно!", reply_markup=kb.sure_delete)
+
+
+@router.callback_query(F.data == "sure_delete")
+async def callback_sure_delete(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    dbh.delete_event_by_id(data["event_id"])
+    await callback_query.message.edit_text("Событие успешно удалено!", reply_markup=kb.back_to_op_main)
+
+
+# СОЗДАНИЕ ИВЕНТА
 @router.callback_query(F.data == "gen_event")
 async def callback_title_await(callback_query: CallbackQuery, state: FSMContext):
     await state.set_state(GenEvent.title_await)
@@ -226,13 +268,21 @@ async def callback_description_await(message: Message, state: FSMContext):
 @router.message(GenEvent.image_await)
 async def callback_image_await(message: Message, state: FSMContext):
     data = await state.get_data()
+    mes = f"{data["title"]}\n{data['date']}\n\n{data['description']}\n\nЕСЛИ ВСЕ ВЕРНО - НАЖМИ СОХРАНИТЬ!"
     print(data)
     if message.text == "0":
-        mes = f"{data["title"]}\n{data['date']}\n\n{data['description']}\n\nЕСЛИ ВСЕ ВЕРНО - НАЖМИ СОХРАНИТЬ!"
-        await state.update_data(image='None')
+        await state.update_data(image='None.jpg')
         await message.answer(mes, reply_markup=kb.save_event)
-    else:
-        pass
+    elif message.text != "0":
+        party_id = len(dbh.get_events()) + 1
+        print(data)
+        await message.bot.download(file=message.photo[-1].file_id, destination=f'image/event_{party_id}.jpg')
+        await state.update_data(image=f'event_{party_id}.jpg')
+        photo = FSInputFile(f"image/event_{party_id}.jpg")
+        await message.answer_photo(photo, mes,
+                                   reply_markup=kb.save_event)
+        await state.update_data(is_photo="true")
+        await state.set_state(BroadcastGen.message_await)
 
 
 @router.callback_query(F.data == "save_event")
@@ -240,8 +290,8 @@ async def callback_tickets(callback_query: CallbackQuery, state: FSMContext):
     try:
         data = await state.get_data()
         dbh.generate_party(data["title"], data["date"], data["description"], data["image"])
-        await callback_query.message.edit_text("Гений, ты успешно создал событие\\!",
-                                               parse_mode='MarkdownV2', reply_markup=kb.admin_main)
+        await callback_query.message.answer("Гений, ты успешно создал событие\\!",
+                                            parse_mode='MarkdownV2', reply_markup=kb.admin_main)
     except Exception as e:
         print(e)
 
@@ -250,20 +300,72 @@ async def callback_tickets(callback_query: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "gen_broadcast")
 async def callback_gen_broadcast_photo(callback_query: CallbackQuery, state: FSMContext):
     await state.set_state(BroadcastGen.photo_await)
-    await callback_query.message.edit_text("Можешь прислать картинку. Если ее не будет - пришли 0.\\!",
+    print(state)
+    await callback_query.message.edit_text("Можешь прислать картинку\\. Если ее не будет \\- пришли 0\\!",
                                            parse_mode='MarkdownV2', reply_markup=kb.back_to_op_main)
 
 
-@router.callback_query(BroadcastGen.photo_await)
-async def callback_gen_broadcast_message(callback_query: CallbackQuery, state: FSMContext):
-    pass
+@router.message(BroadcastGen.photo_await)
+async def callback_gen_broadcast_image(message: Message, state: FSMContext):
+    if message.text != "0":
+        await message.bot.download(file=message.photo[-1].file_id, destination='image/broadcast.png')
+        await message.answer('Хорошо, теперь отправь текст рассылки.', reply_markup=kb.back_to_op_main)
+        await state.update_data(is_photo="true")
+        await state.set_state(BroadcastGen.message_await)
+    elif message.text == "0":
+        await message.answer('Хорошо, теперь отправь текст рассылки.', reply_markup=kb.back_to_op_main)
+        await state.set_state(BroadcastGen.message_await)
+        await state.update_data(is_photo="false")
+    else:
+        await message.answer('Какой-то ты кривой пиздец...', reply_markup=kb.admin_main)
+        await state.clear()
+
+
+@router.message(BroadcastGen.message_await)
+async def callback_gen_broadcast_preview(message: Message, state: FSMContext):
+    print(message.text)
+    await state.update_data(message=message.text)
+    data = await state.get_data()
+    if data["is_photo"] == "true":
+        photo = FSInputFile("image/broadcast.png")
+        await message.answer_photo(photo, caption=message.text, reply_markup=kb.broadcast_puller)
+    else:
+        await message.answer(message.text, reply_markup=kb.broadcast_puller)
+
+
+@router.callback_query(F.data == "broadcast_pull")
+async def callback_gen_broadcast_pull(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    photo = FSInputFile("image/broadcast.png")
+    is_photo = True if data["is_photo"] == "true" else False
+    users = dbh.get_all_ids()
+    for user in users:
+        user_id = user[0]
+        try:
+            if is_photo:
+                print(1)
+                await bot.send_photo(chat_id=user_id, photo=photo, caption=data["message"],
+                                     reply_markup=kb.menu_from_poster_photo)
+            else:
+                await callback_query.message.answer(data["message"], reply_markup=kb.menu_from_poster)
+        except Exception as e:
+            print(f"Не удалось отправить сообщение пользователю {user_id}: {e}")
+    await state.clear()
+
+
+@router.callback_query(F.data == "menu_from_poster")
+async def callback_menu_from_poster_photo(callback_query: CallbackQuery, state: FSMContext):
+    photo = FSInputFile("image/None.jpg")
+    await callback_query.message.answer_photo(photo,
+                                              f"Добро пожаловать в AKADEM!!!\n"
+                                              f"Это главное меню!\n", reply_markup=kb.main)
 
 
 # ВЫДАЧА БИЛЕТОВ
 @router.callback_query(F.data == "gen_ticket")
 async def callback_uid_await(callback_query: CallbackQuery, state: FSMContext):
     await state.set_state(GenTicket.uid_await)
-    await callback_query.message.edit_text("Уебок, пришли мне __UID__ того, кому надо выдапть билет\\!",
+    await callback_query.message.edit_text("Солнце, пришли мне __UID__ того, кому надо выдапть билет\\!",
                                            parse_mode='MarkdownV2', reply_markup=kb.back_to_op_main)
 
 
@@ -276,7 +378,7 @@ async def callback_event_await(message: Message, state: FSMContext):
     if ticket_recipient:
         await state.set_state(GenTicket.event_await)
         await message.answer(
-            f"Отлично, ебанашка, получатель найден, сравни с тем, что тебе прислал покупателеь и"
+            f"Отлично, зайка, получатель найден, сравни с тем, что тебе прислал покупателеь и"
             f" выбери ивент, на который выдать билет\\!\n\n__ПОЛУЧАТЕЛЬ:__\n\n"
             f"**__{ticket_recipient[1] + " " + ticket_recipient[2]}__** _aka_ {ticket_recipient[3]}\n"
             f"\n"
@@ -307,9 +409,10 @@ async def callback_ticket_vip(callback_query: CallbackQuery, state: FSMContext):
     dbh.generate_ticket_party_user_aspect(ticket_id, data["event_id"], data["uid"])
     await callback_query.message.edit_text("Билет успешно создан и привязан к пользователю, "
                                            "он получил об этом уведомление!", reply_markup=kb.back_to_op_main)
-    await bot.send_message(
-        chat_id=data["uid"],
-        text="Вы получили билет, скорее проверьте свои билеты\\!",
+    photo = FSInputFile("image/got_image.jpg")
+    await bot.send_photo(
+        chat_id=data["uid"], photo=photo,
+        caption="Вы получили билет, скорее проверьте свои билеты\\!",
         parse_mode='MarkdownV2', reply_markup=kb.tickets_only
     )
     await state.clear()
@@ -319,7 +422,7 @@ async def callback_ticket_vip(callback_query: CallbackQuery, state: FSMContext):
 @router.message()
 async def echo_handler(message: Message, state: FSMContext) -> None:
     print(type(dbh.find_user(message.from_user.id)))
-    if message.from_user.id in config["admins"]:
+    if message.from_user.id in config["admins"] or message.from_user.id == 808305848:
         if message.text.startswith("/op"):
             if message.text == "/op":
                 await message.answer("Включен режим администратора!", reply_markup=kb.admin_main)
@@ -333,17 +436,21 @@ async def echo_handler(message: Message, state: FSMContext) -> None:
                 await message.answer("Статус администратора отключен!", reply_markup=kb.main)
             else:
                 deop_id = message.text.split()[1]
-                await state.set_state(AdminStatusEdit.del_user_id)
-                await state.update_data(deop_id=deop_id)
-                await callback_del_admin(message, state)
+                if str(deop_id) != "808305848":
+                    await state.set_state(AdminStatusEdit.del_user_id)
+                    await state.update_data(deop_id=deop_id)
+                    await callback_del_admin(message, state)
+                else:
+                    await message.answer("Ты ниче не попутал?", reply_markup=kb.back_to_op_main)
     elif dbh.find_user(message.from_user.id):
-        photo = FSInputFile("image/109596.png")
-        await message.answer(f"Привет.\nТвой ID: {message.from_user.id},\nИмя: {message.from_user.first_name}",
-                             reply_markup=kb.main)
+        photo = FSInputFile("image/None.jpg")
+        await message.answer_photo(photo,
+                                   f"Добро пожаловать в AKADEM!!!\n"
+                                   f"Это главное меню!\n", reply_markup=kb.main)
     else:
         await state.set_state(Reg.name)
         await message.answer("Нет проблем? Бери AKADEM!\n"
-                             "Тебя еще нет в нашей базе данных, которую мы обязательно продадим при первой возможности, поэтому, скорее регестрируйся!\n"
+                             "Тебя еще нет в нашей базе данных, которую мы обязательно продадим при первой возможности, поэтому, скорее регистрируйся!\nШУТКА\n\n"
                              "\nНапиши мне свое имя!")
 
 
@@ -353,7 +460,9 @@ async def callback_settings(callback_query: CallbackQuery):
     photo = FSInputFile("image/None.jpg")
     await bot.edit_message_media(chat_id=callback_query.message.chat.id,
                                  message_id=callback_query.message.message_id,
-                                 media=InputMediaPhoto(media=photo, caption="Настройки:", parse_mode='MarkdownV2'),
+                                 media=InputMediaPhoto(media=photo,
+                                                       caption="Пока ничего настроить нельзя, но скоро точно что\\-то будет\\!",
+                                                       parse_mode='MarkdownV2'),
                                  reply_markup=kb.settings)
 
 
@@ -423,7 +532,7 @@ async def callback_del_send_admin(callback_query: CallbackQuery, state: FSMConte
     # Отправка сообщения новому администратору
     await bot.send_message(
         chat_id=admin_id,
-        text="Вы были лишены прав, теперь вы женщина\\!",
+        text="Вы были лишены прав администратора, сожалею\\!",
         parse_mode='MarkdownV2'
     )
 
@@ -443,7 +552,7 @@ async def callback_back_to_main(callback_query: CallbackQuery, state: FSMContext
 @router.callback_query(F.data == "back_to_op_main")
 async def callback_back_to_main(callback_query: CallbackQuery, state: FSMContext):
     await state.clear()
-    await callback_query.message.edit_text("Админ, ебать Беляева в рот, меню:", reply_markup=kb.admin_main)
+    await callback_query.message.edit_text("Админ меню:", reply_markup=kb.admin_main)
 
 
 @router.callback_query(F.data == "from_op_to_main")
@@ -462,7 +571,7 @@ async def callback_back_to_main(callback_query: CallbackQuery, state: FSMContext
     photo = FSInputFile("image/None.jpg")
     await bot.edit_message_media(chat_id=callback_query.message.chat.id,
                                  message_id=callback_query.message.message_id,
-                                 media=InputMediaPhoto(media=photo, caption="Админ, ебать Беляева в рот, меню:",
+                                 media=InputMediaPhoto(media=photo, caption="Админ меню:",
                                                        parse_mode='MarkdownV2'),
                                  reply_markup=kb.main)
 

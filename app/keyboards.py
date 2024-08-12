@@ -12,7 +12,8 @@ smiles = config["ticket_levels"]
 
 main = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="🎉 Афиша", callback_data="events")],
-    [InlineKeyboardButton(text="🎫 Билеты", callback_data="tickets")],
+    [InlineKeyboardButton(text="🎫 Билеты", callback_data="tickets"),
+     InlineKeyboardButton(text="🛍️ Купить билет", url="https://t.me/gustova_04")],
     [InlineKeyboardButton(text="👤 Профиль", callback_data="profile"),
      InlineKeyboardButton(text="⚙️ Настройки", callback_data="settings")]
 ])
@@ -31,9 +32,10 @@ profile = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main")]
 ])
 
-settings = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main")]
-])
+settings = InlineKeyboardMarkup(
+    inline_keyboard=[[InlineKeyboardButton(text="🧑‍💻 Связь с разработчиком", url="https://t.me/mifoxti")],
+                     [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main")]
+                     ])
 
 back_to_main = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main")]
@@ -45,7 +47,7 @@ back_to_op_main = InlineKeyboardMarkup(inline_keyboard=[
 
 save_event = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="💾 Сохранить!", callback_data="save_event")],
-    [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_op_main")]
+    [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_from_photo")]
 ])
 
 admin_main = InlineKeyboardMarkup(inline_keyboard=[
@@ -80,12 +82,34 @@ back_from_photo = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_from_photo")],
 ])
 
+menu_from_poster = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="💻 Главное меню", callback_data="menu_from_poster")],
+])
 
-def generate_event_buttons():
+menu_from_poster_photo = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="💻 Главное меню", callback_data="back_to_main")],
+])
+
+broadcast_puller = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="📢 Отправить!", callback_data="broadcast_pull")],
+    [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_from_photo")]
+])
+
+more_op_comm = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="🗑️ Удалить событие", callback_data="del_event")],
+    [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_op_main")]
+])
+
+sure_delete = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="✅", callback_data="sure_delete")],
+    [InlineKeyboardButton(text="❌️", callback_data="back_to_op_main")]
+])
+
+def generate_event_buttons(priq='ev'):
     partys = dbh.get_events()
     party_keyboard = InlineKeyboardBuilder()
     for party in partys:
-        party_keyboard.add(InlineKeyboardButton(text=party[1], callback_data=f"ev_{party[0]}"))
+        party_keyboard.add(InlineKeyboardButton(text=party[1], callback_data=f"{priq}_{party[0]}"))
     party_keyboard.add(InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_op_main"))
     return party_keyboard.adjust(1).as_markup()
 

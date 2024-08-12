@@ -197,3 +197,45 @@ def find_ticket_by_id(ticket_id):
         return tickets
     except sqlite3.Error as e:
         print(e)
+
+
+def get_all_ids():
+    try:
+        conn = sqlite3.connect('data/data.db')
+        c = conn.cursor()
+        c.execute('''
+        SELECT ID FROM user 
+        ''')
+        users_id = c.fetchall()
+        conn.close()
+        return users_id
+    except sqlite3.Error as e:
+        print(e)
+
+
+def delete_event_by_id(event_id):
+    try:
+        conn = sqlite3.connect('data/data.db')
+        c = conn.cursor()
+        c.execute('''
+        SELECT ticket_id FROM ticket_party_user WHERE party_id=?
+        ''', (event_id,))
+        ticket_ids = c.fetchall()
+        c.execute('''
+        DELETE FROM ticket_party_user WHERE party_id=?
+        ''', (event_id,))
+        c.execute('''
+        DELETE FROM party WHERE ID=?
+        ''', (event_id,))
+        for ticket_id in ticket_ids:
+            c.execute('''
+            DELETE FROM ticket WHERE ID=?
+            ''', (ticket_id[0],))
+
+        conn.commit()
+
+    except sqlite3.Error as e:
+        print(f"An error occurred: {e}")
+
+    finally:
+        conn.close()
