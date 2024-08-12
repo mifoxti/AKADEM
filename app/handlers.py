@@ -348,7 +348,7 @@ async def callback_gen_broadcast_pull(callback_query: CallbackQuery, state: FSMC
                                      reply_markup=kb.menu_from_poster_photo)
             else:
                 await bot.send_message(chat_id=user_id, text=data["message"],
-                                       reply_markup=kb.menu_from_poster_photo)
+                                       reply_markup=kb.menu_from_broadcast_texted)
         except Exception as e:
             print(f"Не удалось отправить сообщение пользователю {user_id}: {e}")
     await state.clear()
@@ -376,22 +376,22 @@ async def callback_event_await(message: Message, state: FSMContext):
     data = await state.get_data()
     await state.set_state(GenTicket.event_await)
     ticket_recipient = dbh.find_user(data["uid"])
+
     if ticket_recipient:
-        await state.set_state(GenTicket.event_await)
         uid = ticket_recipient[0]
         await message.answer(
             f"Отлично, зайка, получатель найден, сравни с тем, что тебе прислал покупателеь и"
-            f" выбери ивент, на который выдать билет\\!\n\n__ПОЛУЧАТЕЛЬ:__\n\n"
-            f"**__{ticket_recipient[1] + ' ' + ticket_recipient[2]}__** _aka_ {ticket_recipient[3]}\n"
+            f" выбери ивент, на который выдать билет!\n\n<u>ПОЛУЧАТЕЛЬ:</u>\n\n"
+            f"<b>{ticket_recipient[1]} {ticket_recipient[2]}</b> <i>aka</i> {ticket_recipient[3]}\n"
             f"\n"
-            f"UID: __{uid}__",
-            parse_mode='MarkdownV2', reply_markup=kb.generate_event_buttons()
+            f"UID: <u>{uid}</u>",
+            parse_mode='HTML', reply_markup=kb.generate_event_buttons()
         )
-
     else:
         await message.answer(
-            "Такого юзера нет, пробуй еще раз:\\)\\)\\)\\)\n\nя СПЕЦИАЛЬНО не сделаю тут повторный ввод\\)\\)\\)\\)\\!",
-            parse_mode='MarkdownV2', reply_markup=kb.back_to_op_main)
+            "Такого юзера нет, пробуй еще раз:)))\n\nя <b>СПЕЦИАЛЬНО</b> не сделаю тут повторный ввод!!!",
+            parse_mode='HTML', reply_markup=kb.back_to_op_main
+        )
 
 
 @router.callback_query(F.data.startswith("ev_"))
@@ -481,7 +481,7 @@ async def callback_admin_status(message: Message, state: FSMContext):
         elif data:
             mess = "Вы уверены, что хотите назначить администратором пользователя:\n\n" + profile_message_generator(
                 data)
-            await message.answer(mess, reply_markup=kb.admin_invite, parse_mode="MarkdownV2")
+            await message.answer(mess, reply_markup=kb.admin_invite, parse_mode="HTML")
     except Exception as e:
         print(e)
 
@@ -517,7 +517,7 @@ async def callback_del_admin(message: Message, state: FSMContext):
         elif data:
             mess = "Вы уверены, что хотите лишить прав администратора пользователя:\n\n" + profile_message_generator(
                 data)
-            await message.answer(mess, reply_markup=kb.del_admin, parse_mode="MarkdownV2")
+            await message.answer(mess, reply_markup=kb.del_admin, parse_mode="HTML")
     except Exception as e:
         print(e)
 
@@ -583,21 +583,27 @@ async def callback_back_to_main(callback_query: CallbackQuery, state: FSMContext
 @router.callback_query(F.data == "profile")
 async def callback_profile(callback_query: CallbackQuery):
     data = dbh.find_user(callback_query.from_user.id)
-    formatted_text = (f'Твой профиль👤\n\\(его нужно переслать администратору '
-                      f'для покупки билетов или с любым другим вопросом\\)\\!\n\n') + profile_message_generator(
-        data)
+    formatted_text = (
+                         'Твой профиль👤\n(его нужно переслать администратору '
+                         'для покупки билетов или с любым другим вопросом)\n\n'
+                     ) + profile_message_generator(data)
+
     photo = FSInputFile("image/None.jpg")
-    await bot.edit_message_media(chat_id=callback_query.message.chat.id,
-                                 message_id=callback_query.message.message_id,
-                                 media=InputMediaPhoto(media=photo, caption=formatted_text, parse_mode='MarkdownV2'),
-                                 reply_markup=kb.profile)
+
+    await bot.edit_message_media(
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        media=InputMediaPhoto(media=photo, caption=formatted_text, parse_mode='HTML'),
+        reply_markup=kb.profile
+    )
 
 
 def profile_message_generator(data):
     formatted_text = (
-        f'**__{data[1] + " " + data[2]}__** _aka_ {data[3]}\n'
+        f'<b>{data[1]} {data[2]}</b> <i>aka</i> {data[3]}\n'
         f'\n'
-        f'UID: __{data[0]}__')
+        f'UID: <u>{data[0]}</u>'
+    )
     return formatted_text
 
 

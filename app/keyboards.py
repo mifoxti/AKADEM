@@ -90,6 +90,10 @@ menu_from_poster_photo = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="💻 Главное меню", callback_data="back_to_main")],
 ])
 
+menu_from_broadcast_texted = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="💻 Главное меню", callback_data="from_op_to_main")],
+])
+
 broadcast_puller = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="📢 Отправить!", callback_data="broadcast_pull")],
     [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_from_photo")]
