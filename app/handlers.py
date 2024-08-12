@@ -268,7 +268,7 @@ async def callback_description_await(message: Message, state: FSMContext):
 @router.message(GenEvent.image_await)
 async def callback_image_await(message: Message, state: FSMContext):
     data = await state.get_data()
-    mes = f"{data["title"]}\n{data['date']}\n\n{data['description']}\n\nЕСЛИ ВСЕ ВЕРНО - НАЖМИ СОХРАНИТЬ!"
+    mes = f"{data['title']}\n{data['date']}\n\n{data['description']}\n\nЕСЛИ ВСЕ ВЕРНО - НАЖМИ СОХРАНИТЬ!"
     print(data)
     if message.text == "0":
         await state.update_data(image='None.jpg')
@@ -347,7 +347,8 @@ async def callback_gen_broadcast_pull(callback_query: CallbackQuery, state: FSMC
                 await bot.send_photo(chat_id=user_id, photo=photo, caption=data["message"],
                                      reply_markup=kb.menu_from_poster_photo)
             else:
-                await callback_query.message.answer(data["message"], reply_markup=kb.menu_from_poster)
+                await bot.send_message(chat_id=user_id, text=data["message"],
+                                       reply_markup=kb.menu_from_poster_photo)
         except Exception as e:
             print(f"Не удалось отправить сообщение пользователю {user_id}: {e}")
     await state.clear()
@@ -377,13 +378,15 @@ async def callback_event_await(message: Message, state: FSMContext):
     ticket_recipient = dbh.find_user(data["uid"])
     if ticket_recipient:
         await state.set_state(GenTicket.event_await)
+        uid = ticket_recipient[0]
         await message.answer(
             f"Отлично, зайка, получатель найден, сравни с тем, что тебе прислал покупателеь и"
             f" выбери ивент, на который выдать билет\\!\n\n__ПОЛУЧАТЕЛЬ:__\n\n"
-            f"**__{ticket_recipient[1] + " " + ticket_recipient[2]}__** _aka_ {ticket_recipient[3]}\n"
+            f"**__{ticket_recipient[1] + ' ' + ticket_recipient[2]}__** _aka_ {ticket_recipient[3]}\n"
             f"\n"
-            f"UID: __{ticket_recipient[0]}__",
-            parse_mode='MarkdownV2', reply_markup=kb.generate_event_buttons())
+            f"UID: __{uid}__",
+            parse_mode='MarkdownV2', reply_markup=kb.generate_event_buttons()
+        )
 
     else:
         await message.answer(
